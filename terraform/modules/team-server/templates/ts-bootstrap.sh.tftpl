@@ -1,0 +1,48 @@
+#!/bin/bash
+set -euo pipefail
+
+exec > >(tee -a /var/log/redteam-lab-bootstrap.log) 2>&1
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y ca-certificates curl git make
+
+if [[ "${install_mythic}" != "true" ]]; then
+  echo "Mythic installation disabled."
+  exit 0
+fi
+
+if [[ ! -d /opt/mythic/.git ]]; then
+  git clone --branch "${mythic_version}" --depth 1 \
+    https://github.com/its-a-feature/Mythic.git /opt/mythic
+fi
+
+cd /opt/mythic
+./install_docker_debian.sh
+make
+
+# Generate Mythic's .env, then expose only its HTTPS UI on the private NIC.
+./mythic-cli status || true
+sed -i 's/^NGINX_BIND_LOCALHOST_ONLY=.*/NGINX_BIND_LOCALHOST_ONLY="false"/' .env
+sed -i 's/^NGINX_PORT=.*/NGINX_PORT="7443"/' .env
+./mythic-cli start
+
+cat >/etc/systemd/system/mythic-lab.service <<'EOF'
+[Unit]
+Description=Mythic classroom lab
+Requires=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/mythic
+ExecStart=/opt/mythic/mythic-cli start
+ExecStop=/opt/mythic/mythic-cli stop
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable mythic-lab.service

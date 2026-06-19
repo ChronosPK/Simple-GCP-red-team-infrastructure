@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y wireguard iptables
+
+cat >/etc/sysctl.d/99-redteam-lab.conf <<'EOF'
+net.ipv4.ip_forward=1
+EOF
+sysctl --system
+
+install -d -m 0700 /etc/wireguard
+cat >/etc/wireguard/wg0.conf <<'EOF'
+${wireguard_config}
+EOF
+chmod 0600 /etc/wireguard/wg0.conf
+
+systemctl enable --now wg-quick@wg0

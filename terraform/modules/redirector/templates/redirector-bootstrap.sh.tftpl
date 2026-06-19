@@ -1,0 +1,42 @@
+#!/bin/bash
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y nginx openssl
+
+install -d -m 0700 /etc/nginx/tls
+openssl req -x509 -nodes -newkey rsa:3072 -days 365 \
+  -keyout /etc/nginx/tls/lab.key \
+  -out /etc/nginx/tls/lab.crt \
+  -subj "/CN=redteam-lab.internal" \
+  -addext "subjectAltName=DNS:redteam-lab.internal"
+
+cat >/etc/nginx/sites-available/redteam-lab <<'EOF'
+server {
+    listen 443 ssl;
+    server_name _;
+
+    ssl_certificate     /etc/nginx/tls/lab.crt;
+    ssl_certificate_key /etc/nginx/tls/lab.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    server_tokens off;
+
+    location / {
+        proxy_pass https://${team_server_ip}:7443;
+        proxy_ssl_verify off;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 300s;
+    }
+}
+EOF
+
+rm -f /etc/nginx/sites-enabled/default
+ln -sf /etc/nginx/sites-available/redteam-lab /etc/nginx/sites-enabled/redteam-lab
+nginx -t
+systemctl enable nginx
+systemctl restart nginx

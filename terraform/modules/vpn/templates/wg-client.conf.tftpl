@@ -1,0 +1,10 @@
+# ${student_name} — replace the placeholder with the student's private key.
+[Interface]
+PrivateKey = REPLACE_WITH_STUDENT_PRIVATE_KEY
+Address = ${student_ip}/${vpn_prefix_length}
+
+[Peer]
+PublicKey = ${server_public_key}
+Endpoint = ${endpoint}
+AllowedIPs = ${subnet_cidr}
+PersistentKeepalive = 25

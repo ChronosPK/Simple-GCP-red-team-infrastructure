@@ -1,0 +1,29 @@
+project_id = "replace-with-dedicated-gcp-project"
+region     = "europe-central2"
+zone       = "europe-central2-a"
+
+admin_username       = "labadmin"
+admin_ssh_public_key = "ssh-ed25519 AAAA_REPLACE_ME instructor@laptop"
+
+# Do not put the private key in this file. Export it:
+# export TF_VAR_wireguard_server_private_key="$(cat secrets/server.key)"
+wireguard_server_public_key = "REPLACE_WITH_WIREGUARD_SERVER_PUBLIC_KEY"
+
+students = [
+  {
+    name       = "student01"
+    public_key = "" # Paste only student01's WireGuard public key here.
+    vpn_ip     = "10.20.100.10"
+  },
+  {
+    name       = "student02"
+    public_key = "" # Paste only student02's WireGuard public key here.
+    vpn_ip     = "10.20.100.11"
+  },
+]
+
+# Entries with an empty public_key are reserved but are not added to WireGuard.
+
+# Set false for an infrastructure-only deployment.
+install_mythic = true
+mythic_version = "v3.4.0.5"
